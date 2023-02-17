@@ -1,76 +1,130 @@
+import java.util.Arrays;
 
 public class TennisGame1 implements TennisGame {
-    
-    private int m_score1 = 0;
-    private int m_score2 = 0;
-    private String player1Name;
-    private String player2Name;
 
-    public TennisGame1(String player1Name, String player2Name) {
-        this.player1Name = player1Name;
-        this.player2Name = player2Name;
+    class Player {
+        int points = 0;
+        final String name;
+
+        Player(String name) {
+            this.name = name;
+        }
+
+        public void gainPoint() {
+            points++;
+        }
+
+        public boolean hasScoreBiggerThan(Player other) {
+            return points > other.points;
+        }
+
+        public boolean hasScoreBiggerThan(Score score) {
+            return points > score.value;
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public int pointsDifference(Player other) {
+            return points - other.points;
+        }
+
+        public String score() {
+            return Score.from(points).label;
+        }
+
+        public boolean is(String name) {
+            return this.name.equals(name);
+        }
+    }
+
+    private final Player server;
+    private final Player receiver;
+
+    public TennisGame1(String server, String receiver) {
+        this.server = new Player(server);
+        this.receiver = new Player(receiver);
     }
 
     public void wonPoint(String playerName) {
-        if (playerName == "player1")
-            m_score1 += 1;
-        else
-            m_score2 += 1;
+        if(server.is(playerName)) {
+            server.gainPoint();
+        } else {
+            receiver.gainPoint();
+        }
     }
 
     public String getScore() {
-        String score = "";
-        int tempScore=0;
-        if (m_score1==m_score2)
-        {
-            switch (m_score1)
-            {
-                case 0:
-                        score = "Love-All";
-                    break;
-                case 1:
-                        score = "Fifteen-All";
-                    break;
-                case 2:
-                        score = "Thirty-All";
-                    break;
-                default:
-                        score = "Deuce";
-                    break;
-                
-            }
+        if (gameContinues()) {
+            return getGameScore();
         }
-        else if (m_score1>=4 || m_score2>=4)
-        {
-            int minusResult = m_score1-m_score2;
-            if (minusResult==1) score ="Advantage player1";
-            else if (minusResult ==-1) score ="Advantage player2";
-            else if (minusResult>=2) score = "Win for player1";
-            else score ="Win for player2";
-        }
-        else
-        {
-            for (int i=1; i<3; i++)
-            {
-                if (i==1) tempScore = m_score1;
-                else { score+="-"; tempScore = m_score2;}
-                switch(tempScore)
-                {
-                    case 0:
-                        score+="Love";
-                        break;
-                    case 1:
-                        score+="Fifteen";
-                        break;
-                    case 2:
-                        score+="Thirty";
-                        break;
-                    case 3:
-                        score+="Forty";
-                        break;
-                }
-            }
-        }
-        return score;
+        return "Win for " + getLeadingPlayer().name();
     }
+
+    private String getGameScore() {
+        if (isScoreEqual()) {
+            return getEqualScore();
+        }
+        if (isAdvantage()) {
+            return "Advantage " + getLeadingPlayer().name();
+        }
+        return getSimpleScore();
+    }
+
+    private boolean isScoreEqual() {
+        return server.pointsDifference(receiver) == 0;
+    }
+
+    private boolean isAdvantage() {
+        return getLeadingPlayer().hasScoreBiggerThan(Score.FORTY) && !isScoreEqual();
+    }
+
+    private String getSimpleScore() {
+        return String.format("%s-%s", server.score(), receiver.score());
+    }
+
+    enum Score {
+        LOVE(0, "Love"), FIFTEEN(1, "Fifteen"), THIRTY(2, "Thirty"), FORTY(3, "Forty");
+
+        private final int value;
+        private final String label;
+
+        Score(int value, String label) {
+            this.value = value;
+            this.label = label;
+        }
+
+        static Score from(int value) {
+            return Arrays.stream(values())
+                .filter(v -> v.value == value)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("no such element: " + value));
+        }
+
+    }
+
+    private Player getLeadingPlayer() {
+        if (server.hasScoreBiggerThan(receiver)) {
+            return server;
+        }
+        return receiver;
+    }
+
+    private boolean isGameFinished() {
+        return getLeadingPlayer().hasScoreBiggerThan(Score.FORTY)
+            && Math.abs(server.pointsDifference(receiver)) >= 2;
+    }
+
+    private boolean gameContinues() {
+        return !isGameFinished();
+    }
+
+    private String getEqualScore() {
+        if (server.hasScoreBiggerThan(Score.THIRTY)) {
+            return "Deuce";
+        }
+        return String.format("%s-All", server.score());
+    }
+
 }
